@@ -18,13 +18,12 @@ import { Button } from '@/components/ui/button'
 import { 
   Sheet, 
   SheetContent, 
-  SheetTrigger, 
-  SheetTitle // <--- 1. IMPORT THIS
+  SheetTrigger,
+  SheetTitle // Imported to fix accessibility error
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 
-// ... (keep your roleNavItems object exactly as it was) ...
 const roleNavItems = {
   student: [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -99,11 +98,8 @@ export function Sidebar({ userRole }: { userRole: 'student' | 'lecturer' | 'admi
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[80%] sm:w-[300px] p-0">
-             {/* 2. ADD THE TITLE HERE 
-                 "sr-only" hides it visually but fixes the error 
-             */}
+             {/* Screen-reader only title to fix Radix UI accessibility error */}
              <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-             
              <NavContent />
           </SheetContent>
         </Sheet>
