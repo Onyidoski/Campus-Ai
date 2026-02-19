@@ -1,5 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { AddCourseDialog } from '@/components/dashboard/add-course-dialog'
+import { JoinCourseDialog } from '@/components/dashboard/join-course-dialog'
+import { RegisterCoursesDialog } from '@/components/dashboard/register-courses-dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { redirect } from 'next/navigation'
@@ -9,35 +11,55 @@ import { BookOpen } from 'lucide-react'
 export default async function CoursesPage() {
   const supabase = await createClient()
 
-  // 1. Get Current User
+  // 1. Get Current User & Profile
   const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    redirect('/login')
-  }
+  if (!user) redirect('/login')
 
-  // 2. Fetch User Profile to get Role
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, academic_level')
     .eq('id', user.id)
     .single()
 
   const isLecturer = profile?.role === 'lecturer'
 
-  // 3. Fetch Courses Logic
-  // If Lecturer: Fetch only courses created by them.
-  // If Student: Fetch all available courses.
-  let query = supabase
-    .from('courses')
-    .select('*')
-    .order('created_at', { ascending: false })
-  
-  if (isLecturer) {
-    query = query.eq('lecturer_id', user.id)
-  }
+  let courses: any[] = []
+  let availableCoursesToRegister: any[] = []
 
-  const { data: courses, error } = await query
+  if (isLecturer) {
+    // LECTURERS: Fetch courses they created
+    const { data } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('lecturer_id', user.id)
+      .order('created_at', { ascending: false })
+    courses = data || []
+  } else {
+    // STUDENTS: 
+    // A. Fetch courses they are already enrolled in
+    const { data: enrollments } = await supabase
+      .from('enrollments')
+      .select(`
+        course_id,
+        courses (*)
+      `)
+      .eq('student_id', user.id)
+      .order('enrolled_at', { ascending: false })
+    
+    courses = enrollments?.map((enrollment: any) => enrollment.courses) || []
+    const enrolledCourseIds = courses.map((c) => c.id)
+
+    // B. Fetch ALL courses that match their exact academic level
+    const { data: levelCourses } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('level', profile?.academic_level) // e.g. '100', '400'
+    
+    // C. Filter out the ones they are already enrolled in so the registration list is clean
+    availableCoursesToRegister = levelCourses?.filter(
+      (course) => !enrolledCourseIds.includes(course.id)
+    ) || []
+  }
 
   return (
     <div className="space-y-6">
@@ -45,17 +67,28 @@ export default async function CoursesPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {isLecturer ? 'Manage Courses' : 'Available Courses'}
+            {isLecturer ? 'Manage Courses' : 'My Enrolled Courses'}
           </h1>
           <p className="text-muted-foreground">
             {isLecturer 
               ? 'Create and manage your course materials and assignments.' 
-              : 'Browse and access your enrolled course materials.'}
+              : 'View materials and submit assignments for your active classes.'}
           </p>
         </div>
         
-        {/* Only Lecturers can see the Add Button */}
-        {isLecturer && <AddCourseDialog />}
+        {/* Dynamic Buttons Based on Role */}
+        <div className="flex gap-2">
+          {isLecturer ? (
+            <AddCourseDialog /> 
+          ) : (
+            <>
+              {/* Optional: Keep the Join Code button as a backup for out-of-level electives */}
+              <JoinCourseDialog />
+              {/* The new auto-suggest Registration checklist */}
+              <RegisterCoursesDialog availableCourses={availableCoursesToRegister} />
+            </>
+          )}
+        </div>
       </div>
 
       {/* COURSES GRID */}
@@ -63,11 +96,13 @@ export default async function CoursesPage() {
         {courses?.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-16 text-center border-2 border-dashed rounded-lg bg-gray-50/50">
             <BookOpen className="h-10 w-10 text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">No courses found</h3>
+            <h3 className="text-lg font-medium text-gray-900">
+              {isLecturer ? 'No courses found' : 'Not enrolled in any courses'}
+            </h3>
             <p className="text-sm text-gray-500 max-w-sm mt-1">
               {isLecturer 
                 ? "You haven't created any courses yet. Click the button above to get started." 
-                : "No courses are available for enrollment at the moment."}
+                : "Click the 'Register Courses' button above to select classes for your level."}
             </p>
           </div>
         ) : (
@@ -83,7 +118,6 @@ export default async function CoursesPage() {
                   </Badge>
                 </div>
                 
-                {/* Fixed Title: Added leading-tight and padding to prevent cut-off */}
                 <CardTitle className="text-lg font-semibold leading-tight pb-1">
                   {course.title}
                 </CardTitle>
@@ -98,7 +132,7 @@ export default async function CoursesPage() {
                   href={`/dashboard/courses/${course.id}`} 
                   className="inline-flex items-center text-sm font-medium text-primary hover:underline underline-offset-4"
                 >
-                  {isLecturer ? 'Manage Materials' : 'View Course'} 
+                  {isLecturer ? 'Manage Materials' : 'Enter Course'} 
                   <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
                 </Link>
               </CardContent>
