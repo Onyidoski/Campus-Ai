@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
-import { streamText, embed } from 'ai'
+import { streamText, embed, convertToModelMessages } from 'ai'
 import { google } from '@ai-sdk/google'
 
 // Allow responses up to 30 seconds
@@ -9,26 +9,40 @@ export async function POST(req: Request) {
     const supabase = await createClient()
 
     // Extract the chat history and the current course ID from the frontend
-    const { messages, courseId } = await req.json()
+    const body = await req.json()
+    const { messages, courseId } = body
 
-    // 1. Get the user's latest question
-    const latestMessage = messages[messages.length - 1].content
+    console.log('📨 Chat API called. courseId:', courseId)
+    console.log('📨 Body keys:', Object.keys(body))
+
+    // 1. Get the user's latest question (v6 uses parts array, not content string)
+    const lastMessage = messages[messages.length - 1]
+    const latestMessage = lastMessage.parts
+        ?.filter((p: any) => p.type === 'text')
+        .map((p: any) => p.text)
+        .join('') || ''
+
+    console.log('❓ Latest message:', latestMessage)
 
     // 2. Turn the student's question into mathematical vectors
     const { embedding } = await embed({
-        model: google.textEmbeddingModel('text-embedding-004'),
+        model: google.textEmbeddingModel('gemini-embedding-001'),
         value: latestMessage,
     })
+
+    console.log('🔢 Embedding dimensions:', embedding.length)
 
     // 3. Search Supabase for the most relevant paragraphs uploaded by the lecturer
     const { data: matchedContext, error } = await supabase.rpc('match_material_embeddings', {
         query_embedding: embedding,
-        match_threshold: 0.3,     // How strict the match should be (0.3 is a good balance)
-        match_count: 5,           // Grab the 5 most relevant paragraphs
-        filter_course_id: courseId // ONLY search materials from this specific course!
+        match_threshold: 0.3,
+        match_count: 5,
+        filter_course_id: courseId
     })
 
-    if (error) console.error("Vector Search Error:", error)
+    console.log('🔍 Vector search results:', matchedContext?.length ?? 0, 'matches')
+    if (error) console.error("❌ Vector Search Error:", error)
+    if (matchedContext) console.log('📄 First match preview:', matchedContext[0]?.content?.substring(0, 100))
 
     // 4. Combine all the found paragraphs into one giant reference text
     let contextText = ""
@@ -51,11 +65,13 @@ RULES:
 2. If the answer is NOT in the context, politely inform the student that you cannot find the exact answer in the lecturer's notes, but provide a helpful, scientifically/academically accurate general answer anyway.
 3. Format your answers beautifully using markdown (bolding, bullet points, etc.) to make it easy for a student to read.`
 
-    // 6. Generate the streaming response using Gemini 1.5 Flash (Super fast!)
+    // 6. Convert UIMessages to model messages and generate the streaming response
+    const modelMessages = await convertToModelMessages(messages)
+
     const result = streamText({
         model: google('gemini-2.5-flash'),
         system: systemPrompt,
-        messages,
+        messages: modelMessages,
     })
 
     // 7. Stream the text back to the UI in real-time

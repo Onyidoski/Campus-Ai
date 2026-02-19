@@ -6,6 +6,7 @@ import { uploadToR2 } from '@/utils/r2'
 import { embedMany } from 'ai'
 import { google } from '@ai-sdk/google'
 import { PDFParse } from 'pdf-parse'
+import mammoth from 'mammoth'
 
 // --- HELPER: CHOP TEXT INTO PARAGRAPHS ---
 function chunkText(text: string, maxChunkSize: number = 1000) {
@@ -61,46 +62,110 @@ export async function uploadMaterial(formData: FormData, courseId: string) {
 
     // ==========================================
     // 3. THE AI KNOWLEDGE EXTRACTOR 🧠
+    // Supports: PDF, DOCX
     // ==========================================
-    if (file.type === 'application/pdf') {
+    const supportedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    const fileExtension = file.name?.split('.').pop()?.toLowerCase()
+    const isSupported = supportedTypes.includes(file.type) || fileExtension === 'docx' || fileExtension === 'pdf'
+
+    if (isSupported) {
       try {
-        // A. Read the PDF using v2 syntax
+        let text = ''
         const buffer = Buffer.from(await file.arrayBuffer())
-        const parser = new PDFParse({ data: buffer })
-        const textResult = await parser.getText()
-        const text = textResult.text
-        await parser.destroy()
+
+        // A. Extract text based on file type
+        if (file.type === 'application/pdf' || fileExtension === 'pdf') {
+          console.log('📄 AI Extractor: Starting PDF text extraction...')
+          const parser = new PDFParse({ data: buffer })
+          const textResult = await parser.getText()
+          text = textResult.text
+          await parser.destroy()
+        } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || fileExtension === 'docx') {
+          console.log('📄 AI Extractor: Starting DOCX text extraction...')
+          const result = await mammoth.extractRawText({ buffer })
+          text = result.value
+        }
+
+        console.log('📄 AI Extractor: Extracted', text?.length ?? 0, 'characters of text')
 
         if (text && text.trim().length > 0) {
-          // B. Chop it into small paragraphs
-          const chunks = chunkText(text, 1000)
+          // B. Chop it into paragraphs (3000 chars = good balance of context vs count)
+          const chunks = chunkText(text, 3000)
           const validChunks = chunks.filter(c => c.trim().length > 0)
+          console.log('📄 AI Extractor: Created', validChunks.length, 'text chunks')
 
-          // C. Ask Google Gemini to convert text into mathematical vectors
-          const { embeddings } = await embedMany({
-            model: google.textEmbeddingModel('text-embedding-004'),
-            values: validChunks,
-          })
+          // C. Batch embed in small groups to stay within free tier rate limits
+          const BATCH_SIZE = 5 // Small batches to avoid free tier quota
+          const DELAY_BETWEEN_BATCHES_MS = 15000 // 15 seconds between batches
+          const MAX_RETRIES = 5
+          const allEmbeddings: number[][] = []
+          const totalBatches = Math.ceil(validChunks.length / BATCH_SIZE)
+          console.log(`📄 AI Extractor: Generating embeddings in ${totalBatches} batches (free tier safe mode)...`)
 
-          // D. Save the memories into the pgvector database
-          const embeddingsToInsert = validChunks.map((chunk, i) => ({
-            course_id: courseId,
-            material_id: material.id,
-            content: chunk,
-            embedding: embeddings[i]
-          }))
+          for (let i = 0; i < validChunks.length; i += BATCH_SIZE) {
+            // Rate limit delay between batches
+            if (i > 0) {
+              console.log(`📄 AI Extractor: Waiting ${DELAY_BETWEEN_BATCHES_MS / 1000}s before next batch...`)
+              await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES_MS))
+            }
+            const batch = validChunks.slice(i, i + BATCH_SIZE)
+            const batchNum = Math.floor(i / BATCH_SIZE) + 1
+            console.log(`📄 AI Extractor: Embedding batch ${batchNum}/${totalBatches} (${batch.length} chunks)`)
 
-          const { error: vectorError } = await supabase
-            .from('material_embeddings')
-            .insert(embeddingsToInsert)
-
-          if (vectorError) {
-            console.error("Vector DB Insert Error:", vectorError)
+            // Retry with exponential backoff
+            let lastError: unknown = null
+            for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+              try {
+                const { embeddings } = await embedMany({
+                  model: google.textEmbeddingModel('gemini-embedding-001'),
+                  values: batch,
+                })
+                allEmbeddings.push(...embeddings)
+                lastError = null
+                break // Success, move to next batch
+              } catch (err) {
+                lastError = err
+                const waitTime = Math.pow(2, attempt) * 30000 // 30s, 60s, 120s, 240s, 480s
+                console.warn(`⚠️ Batch ${batchNum} attempt ${attempt + 1}/${MAX_RETRIES} failed (rate limit). Retrying in ${waitTime / 1000}s...`)
+                await new Promise(resolve => setTimeout(resolve, waitTime))
+              }
+            }
+            if (lastError) {
+              console.error(`❌ Batch ${batchNum} failed after ${MAX_RETRIES} retries. Skipping remaining batches.`)
+              throw lastError
+            }
           }
+          console.log('📄 AI Extractor: Generated', allEmbeddings.length, 'embeddings, dimension:', allEmbeddings[0]?.length)
+
+          // D. Batch insert into Supabase
+          let totalInserted = 0
+          for (let i = 0; i < validChunks.length; i += BATCH_SIZE) {
+            const batchChunks = validChunks.slice(i, i + BATCH_SIZE)
+            const batchEmbeddings = allEmbeddings.slice(i, i + BATCH_SIZE)
+            const embeddingsToInsert = batchChunks.map((chunk, j) => ({
+              course_id: courseId,
+              material_id: material.id,
+              content: chunk,
+              embedding: batchEmbeddings[j]
+            }))
+
+            const { error: vectorError } = await supabase
+              .from('material_embeddings')
+              .insert(embeddingsToInsert)
+
+            if (vectorError) {
+              console.error(`❌ Vector DB Insert Error (batch ${Math.floor(i / BATCH_SIZE) + 1}):`, vectorError)
+            } else {
+              totalInserted += embeddingsToInsert.length
+            }
+          }
+          console.log(`✅ AI Extractor: Successfully stored ${totalInserted}/${validChunks.length} embeddings!`)
+        } else {
+          console.log('⚠️ AI Extractor: No text found in document (might be a scanned/image file)')
         }
       } catch (aiError) {
-        console.error("AI Extraction Error:", aiError)
-        // Note: If the AI fails (e.g., scanned PDF with no text), we don't crash the upload.
+        console.error("❌ AI Extraction Error:", aiError)
+        // Note: If the AI fails, we don't crash the upload.
         // The file still uploads, it just won't be searchable by the AI.
       }
     }
@@ -156,7 +221,7 @@ export async function createAssignment(formData: FormData, courseId: string) {
 }
 
 // --- DELETE ACTIONS ---
-export async function deleteMaterial(materialId: string, courseId: string, formData: FormData) {
+export async function deleteMaterial(materialId: string, courseId: string, formData?: FormData) {
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -164,13 +229,12 @@ export async function deleteMaterial(materialId: string, courseId: string, formD
     .delete()
     .eq('id', materialId)
 
-  if (error) return { error: error.message }
+  if (error) throw new Error(error.message)
 
   revalidatePath(`/dashboard/courses/${courseId}`)
-  return { success: 'Material deleted.' }
 }
 
-export async function deleteAssignment(assignmentId: string, courseId: string, formData: FormData) {
+export async function deleteAssignment(assignmentId: string, courseId: string, formData?: FormData) {
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -178,10 +242,9 @@ export async function deleteAssignment(assignmentId: string, courseId: string, f
     .delete()
     .eq('id', assignmentId)
 
-  if (error) return { error: error.message }
+  if (error) throw new Error(error.message)
 
   revalidatePath(`/dashboard/courses/${courseId}`)
-  return { success: 'Assignment deleted.' }
 }
 
 // --- EDIT ACTIONS ---
@@ -329,7 +392,7 @@ export async function createAnnouncement(formData: FormData, courseId: string) {
   return { success: 'Announcement posted!' }
 }
 
-export async function deleteAnnouncement(announcementId: string, courseId: string) {
+export async function deleteAnnouncement(announcementId: string, courseId: string, formData?: FormData) {
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -337,8 +400,7 @@ export async function deleteAnnouncement(announcementId: string, courseId: strin
     .delete()
     .eq('id', announcementId)
 
-  if (error) return { error: error.message }
+  if (error) throw new Error(error.message)
 
   revalidatePath(`/dashboard/courses/${courseId}`)
-  return { success: 'Announcement deleted.' }
 }
