@@ -1,7 +1,7 @@
 
 Product Requirements Document (PRD)
 Project Title
-AI-Powered Campus Learning and Assistant System with Personalized Study Support
+AI-Powered Campus Assistand with Integrated Learning System
 
 1. Introduction
 1.1 Background

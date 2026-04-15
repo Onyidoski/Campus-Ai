@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress' // <-- IMPORT THIS
 import { toast } from 'sonner'
-import { Upload } from 'lucide-react'
+import { Upload, AlertCircle } from 'lucide-react'
 
 export function UploadMaterialDialog({ courseId }: { courseId: string }) {
   const [open, setOpen] = useState(false)
@@ -26,10 +26,10 @@ export function UploadMaterialDialog({ courseId }: { courseId: string }) {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
+
     const formData = new FormData(e.currentTarget)
     const file = formData.get('file') as File
-    
+
     // Safety check
     if (!file || file.size === 0) {
       toast.error("Please select a valid file.")
@@ -50,7 +50,7 @@ export function UploadMaterialDialog({ courseId }: { courseId: string }) {
         }
         return prev + 5
       })
-    }, 300) 
+    }, 300)
 
     try {
       // Execute the Server Action
@@ -67,7 +67,7 @@ export function UploadMaterialDialog({ courseId }: { courseId: string }) {
           toast.error(result.error)
         } else {
           toast.success('Material uploaded successfully!')
-          setOpen(false) 
+          setOpen(false)
           setProgress(0) // Reset for next time
         }
       }, 500)
@@ -83,7 +83,7 @@ export function UploadMaterialDialog({ courseId }: { courseId: string }) {
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       // Don't allow closing if currently uploading
-      if (loading) return 
+      if (loading) return
       setOpen(isOpen)
     }}>
       <DialogTrigger asChild>
@@ -103,17 +103,24 @@ export function UploadMaterialDialog({ courseId }: { courseId: string }) {
             <Label htmlFor="title">Title</Label>
             <Input id="title" name="title" placeholder="e.g., Week 1 Slides" required disabled={loading} />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="file">File</Label>
-            <Input 
-              id="file" 
-              name="file" 
-              type="file" 
+            <Input
+              id="file"
+              name="file"
+              type="file"
               accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
-              required 
+              required
               disabled={loading}
             />
+          </div>
+
+          <div className="flex gap-2 items-start rounded-lg bg-amber-50 border border-amber-200 p-3">
+            <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-amber-700 leading-relaxed">
+              <strong>Tip:</strong> For AI study tools to work, upload typed/digital PDFs. Scanned or image-based PDFs (e.g. from CamScanner) cannot be read by the AI.
+            </p>
           </div>
 
           {/* PROGRESS BAR (Only shows when uploading) */}

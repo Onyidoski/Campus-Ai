@@ -23,18 +23,46 @@ const SUGGESTION_CHIPS = [
     { icon: GraduationCap, label: 'Help me prepare for exams' },
 ]
 
-export function AITutorSheet({ courseId }: { courseId: string }) {
+export function AITutorSheet({ courseId, materials, initialMessage, externalOpen, onOpenChange }: {
+    courseId: string
+    materials?: { id: string; title: string; file_name: string }[]
+    initialMessage?: string
+    externalOpen?: boolean
+    onOpenChange?: (open: boolean) => void
+}) {
     const [input, setInput] = useState('')
     const [isOpen, setIsOpen] = useState(false)
+    const [selectedMaterial, setSelectedMaterial] = useState<string>('all')
+
+    const materialId = selectedMaterial !== 'all' ? selectedMaterial : undefined
 
     const { messages, sendMessage, status } = useChat({
         transport: new DefaultChatTransport({
             api: '/api/chat',
-            body: { courseId },
+            body: { courseId, materialId },
         }),
     })
 
     const isLoading = status === 'submitted' || status === 'streaming'
+
+    // Handle external open state
+    const sheetOpen = externalOpen !== undefined ? externalOpen : isOpen
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open)
+        onOpenChange?.(open)
+    }
+
+    // Auto-send initial message when sheet opens with one
+    const initialMessageSent = useRef(false)
+    useEffect(() => {
+        if (sheetOpen && initialMessage && !initialMessageSent.current) {
+            initialMessageSent.current = true
+            sendMessage({ text: initialMessage })
+        }
+        if (!sheetOpen) {
+            initialMessageSent.current = false
+        }
+    }, [sheetOpen, initialMessage, sendMessage])
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault()
@@ -56,7 +84,7 @@ export function AITutorSheet({ courseId }: { courseId: string }) {
     }, [messages, isLoading])
 
     return (
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <Sheet open={sheetOpen} onOpenChange={handleOpenChange}>
             <SheetTrigger asChild>
                 {/* Floating Action Button with gradient and glow */}
                 <Button
@@ -100,9 +128,36 @@ export function AITutorSheet({ courseId }: { courseId: string }) {
                         </div>
                     </div>
 
+                    {/* Material Selector */}
+                    {materials && materials.length > 0 && (
+                        <div className="relative mt-3">
+                            <select
+                                value={selectedMaterial}
+                                onChange={(e) => setSelectedMaterial(e.target.value)}
+                                className="w-full rounded-lg bg-white/15 backdrop-blur-sm text-white text-xs font-medium
+                                    px-3 py-2 border border-white/20 appearance-none cursor-pointer
+                                    focus:outline-none focus:ring-2 focus:ring-white/30
+                                    transition-colors duration-200 hover:bg-white/20"
+                                style={{ colorScheme: 'dark' }}
+                            >
+                                <option value="all" className="text-gray-900">📚 All course materials</option>
+                                {materials.map((m) => (
+                                    <option key={m.id} value={m.id} className="text-gray-900">
+                                        📄 {m.title || m.file_name}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <svg className="h-3 w-3 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Close button */}
                     <button
-                        onClick={() => setIsOpen(false)}
+                        onClick={() => handleOpenChange(false)}
                         className="absolute top-4 right-4 h-8 w-8 rounded-full bg-white/15 hover:bg-white/25 
                             flex items-center justify-center transition-colors duration-200"
                     >

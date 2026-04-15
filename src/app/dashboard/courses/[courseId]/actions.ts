@@ -404,3 +404,75 @@ export async function deleteAnnouncement(announcementId: string, courseId: strin
 
   revalidatePath(`/dashboard/courses/${courseId}`)
 }
+
+// --- ONLINE CLASS ACTIONS ---
+export async function scheduleClass(formData: FormData, courseId: string) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const title = formData.get('title') as string
+  const description = formData.get('description') as string
+  const scheduledAt = formData.get('scheduledAt') as string
+  const duration = parseInt(formData.get('duration') as string) || 60
+
+  if (!title || !scheduledAt) return { error: 'Title and date/time are required.' }
+
+  // Fetch the course code to create a readable room name
+  const { data: course } = await supabase
+    .from('courses')
+    .select('code')
+    .eq('id', courseId)
+    .single()
+
+  // Generate a unique Jitsi room name
+  const slug = (course?.code || 'class').replace(/\s+/g, '').toLowerCase()
+  const timestamp = Date.now().toString(36)
+  const roomName = `campusai-${slug}-${timestamp}`
+
+  const { error } = await supabase
+    .from('online_classes')
+    .insert({
+      course_id: courseId,
+      title,
+      description: description || null,
+      scheduled_at: new Date(scheduledAt).toISOString(),
+      duration_minutes: duration,
+      room_name: roomName,
+      created_by: user.id,
+      status: 'scheduled',
+    })
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/dashboard/courses/${courseId}`)
+  return { success: 'Class scheduled successfully!' }
+}
+
+export async function deleteClass(classId: string, courseId: string, formData?: FormData) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('online_classes')
+    .delete()
+    .eq('id', classId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/dashboard/courses/${courseId}`)
+}
+
+export async function updateClassStatus(classId: string, status: 'scheduled' | 'live' | 'ended', courseId: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('online_classes')
+    .update({ status })
+    .eq('id', classId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/dashboard/courses/${courseId}`)
+  return { success: `Class marked as ${status}` }
+}

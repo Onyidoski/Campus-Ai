@@ -4,20 +4,21 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import { 
-  BookOpen, 
-  LayoutDashboard, 
-  LogOut, 
-  Settings, 
-  Users, 
+import {
+  BookOpen,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Users,
   MessageSquare,
   Calendar,
-  Menu
+  Menu,
+  Video
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { 
-  Sheet, 
-  SheetContent, 
+import {
+  Sheet,
+  SheetContent,
   SheetTrigger,
   SheetTitle // Imported to fix accessibility error
 } from '@/components/ui/sheet'
@@ -98,9 +99,9 @@ export function Sidebar({ userRole }: { userRole: 'student' | 'lecturer' | 'admi
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[80%] sm:w-[300px] p-0">
-             {/* Screen-reader only title to fix Radix UI accessibility error */}
-             <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-             <NavContent />
+            {/* Screen-reader only title to fix Radix UI accessibility error */}
+            <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+            <NavContent />
           </SheetContent>
         </Sheet>
         <span className="font-semibold">Campus AI</span>

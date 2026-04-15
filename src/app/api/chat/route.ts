@@ -10,9 +10,9 @@ export async function POST(req: Request) {
 
     // Extract the chat history and the current course ID from the frontend
     const body = await req.json()
-    const { messages, courseId } = body
+    const { messages, courseId, materialId } = body
 
-    console.log('📨 Chat API called. courseId:', courseId)
+    console.log('📨 Chat API called. courseId:', courseId, 'materialId:', materialId)
     console.log('📨 Body keys:', Object.keys(body))
 
     // 1. Get the user's latest question (v6 uses parts array, not content string)
@@ -24,30 +24,47 @@ export async function POST(req: Request) {
 
     console.log('❓ Latest message:', latestMessage)
 
-    // 2. Turn the student's question into mathematical vectors
-    const { embedding } = await embed({
-        model: google.textEmbeddingModel('gemini-embedding-001'),
-        value: latestMessage,
-    })
-
-    console.log('🔢 Embedding dimensions:', embedding.length)
-
-    // 3. Search Supabase for the most relevant paragraphs uploaded by the lecturer
-    const { data: matchedContext, error } = await supabase.rpc('match_material_embeddings', {
-        query_embedding: embedding,
-        match_threshold: 0.3,
-        match_count: 5,
-        filter_course_id: courseId
-    })
-
-    console.log('🔍 Vector search results:', matchedContext?.length ?? 0, 'matches')
-    if (error) console.error("❌ Vector Search Error:", error)
-    if (matchedContext) console.log('📄 First match preview:', matchedContext[0]?.content?.substring(0, 100))
-
     // 4. Combine all the found paragraphs into one giant reference text
     let contextText = ""
-    if (matchedContext && matchedContext.length > 0) {
-        contextText = matchedContext.map((match: any) => match.content).join('\n\n---\n\n')
+
+    if (materialId) {
+        // Material-specific mode: fetch all embeddings from this specific PDF
+        const { data: chunks, error: chunkError } = await supabase
+            .from('material_embeddings')
+            .select('content')
+            .eq('material_id', materialId)
+            .limit(20)
+
+        console.log('📄 Material-specific search:', chunks?.length ?? 0, 'chunks')
+        if (chunkError) console.error("❌ Material fetch error:", chunkError)
+
+        if (chunks && chunks.length > 0) {
+            contextText = chunks.map((c: any) => c.content).join('\n\n---\n\n')
+        }
+    } else {
+        // 2. Turn the student's question into mathematical vectors
+        const { embedding } = await embed({
+            model: google.textEmbeddingModel('gemini-embedding-001'),
+            value: latestMessage,
+        })
+
+        console.log('🔢 Embedding dimensions:', embedding.length)
+
+        // 3. Search Supabase for the most relevant paragraphs uploaded by the lecturer
+        const { data: matchedContext, error } = await supabase.rpc('match_material_embeddings', {
+            query_embedding: embedding,
+            match_threshold: 0.3,
+            match_count: 5,
+            filter_course_id: courseId
+        })
+
+        console.log('🔍 Vector search results:', matchedContext?.length ?? 0, 'matches')
+        if (error) console.error("❌ Vector Search Error:", error)
+        if (matchedContext) console.log('📄 First match preview:', matchedContext[0]?.content?.substring(0, 100))
+
+        if (matchedContext && matchedContext.length > 0) {
+            contextText = matchedContext.map((match: any) => match.content).join('\n\n---\n\n')
+        }
     }
 
     // 5. Create the System Prompt (This is the AI's secret instruction manual)
