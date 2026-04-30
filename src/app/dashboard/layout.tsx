@@ -24,10 +24,23 @@ export default async function DashboardLayout({
 
   const userRole = profile?.role || 'student'
 
+  let unreadNotifications = 0
+  try {
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false)
+
+    unreadNotifications = count || 0
+  } catch {
+    unreadNotifications = 0
+  }
+
   return (
     <div className="flex h-screen w-full flex-col md:flex-row overflow-hidden bg-white">
       {/* Sidebar Component handles its own responsive behavior now */}
-      <Sidebar userRole={userRole} />
+      <Sidebar userRole={userRole} unreadNotifications={unreadNotifications} />
       
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50/10">

@@ -9,7 +9,7 @@ import { JitsiRoom } from './jitsi-room'
 export default async function OnlineClassPage({
   params,
 }: {
-  params: Promise<{ classId: string }> | { classId: string }
+  params: Promise<{ classId: string }>
 }) {
   const supabase = await createClient()
 
@@ -120,6 +120,7 @@ export default async function OnlineClassPage({
           <JitsiRoom
             roomName={onlineClass.room_name}
             displayName={displayName}
+            classTitle={onlineClass.title}
             classId={onlineClass.id}
             courseId={onlineClass.course_id}
             isLecturer={isLecturer}

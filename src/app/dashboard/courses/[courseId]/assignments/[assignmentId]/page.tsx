@@ -9,7 +9,7 @@ import { ArrowLeft, Download, FileText, CheckCircle2, Clock } from 'lucide-react
 export default async function AssignmentSubmissionsPage({
   params,
 }: {
-  params: Promise<{ courseId: string; assignmentId: string }> | { courseId: string; assignmentId: string }
+  params: Promise<{ courseId: string; assignmentId: string }>
 }) {
   const supabase = await createClient()
   

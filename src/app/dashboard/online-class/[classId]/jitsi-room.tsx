@@ -14,12 +14,14 @@ declare global {
 export function JitsiRoom({
   roomName,
   displayName,
+  classTitle,
   classId,
   courseId,
   isLecturer,
 }: {
   roomName: string
   displayName: string
+  classTitle: string
   classId: string
   courseId: string
   isLecturer: boolean
@@ -55,6 +57,7 @@ export function JitsiRoom({
             startWithVideoMuted: true,
             prejoinPageEnabled: false,
             disableDeepLinking: true,
+            subject: classTitle,
             toolbarButtons: [
               'microphone', 'camera', 'desktop', 'chat',
               'raisehand', 'participants-pane', 'tileview',

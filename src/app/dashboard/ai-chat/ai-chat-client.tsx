@@ -3,6 +3,7 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useEffect, useRef, useState, FormEvent } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -19,10 +20,10 @@ type Course = {
 }
 
 const SUGGESTION_CHIPS = [
-    { icon: BookOpen, label: 'Summarize the key topics in this course' },
-    { icon: HelpCircle, label: 'Explain a concept I\'m struggling with' },
-    { icon: Lightbulb, label: 'Give me tips to study for this course' },
-    { icon: GraduationCap, label: 'Help me prepare for my exams' },
+    { icon: BookOpen, label: 'What assignments are due this week?' },
+    { icon: HelpCircle, label: 'Do I have any class today?' },
+    { icon: Lightbulb, label: 'Show me urgent announcements' },
+    { icon: GraduationCap, label: 'Summarize the key topics in this course' },
 ]
 
 export function AIChatClient({ courses, userName }: { courses: Course[], userName: string }) {
@@ -93,7 +94,7 @@ export function AIChatClient({ courses, userName }: { courses: Course[], userNam
                 <h2 className="text-xl font-bold text-gray-900 mb-2">No Courses Yet</h2>
                 <p className="text-sm text-gray-500 max-w-sm">
                     You need to be enrolled in at least one course to use the AI Companion.
-                    Head to <a href="/dashboard/courses" className="text-indigo-600 font-medium hover:underline">My Courses</a> to join a class.
+                    Head to <Link href="/dashboard/courses" className="text-indigo-600 font-medium hover:underline">My Courses</Link> to join a class.
                 </p>
             </div>
         )

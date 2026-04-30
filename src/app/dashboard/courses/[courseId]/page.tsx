@@ -16,13 +16,14 @@ import { deleteMaterial, deleteAssignment, deleteAnnouncement, deleteClass } fro
 import { CreatePostDialog } from '@/components/dashboard/create-post-dialog'
 import { StudyToolsPanel } from '@/components/dashboard/study/study-tools-panel'
 import { ScheduleClassDialog } from '@/components/dashboard/schedule-class-dialog'
+import { OfflineMaterialButton } from '@/components/dashboard/offline-material-button'
 
 export default async function CourseDetailsPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ courseId: string }> | { courseId: string }
-  searchParams?: Promise<{ [key: string]: string | string[] | undefined }> | { [key: string]: string | string[] | undefined }
+  params: Promise<{ courseId: string }>
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const supabase = await createClient()
 
@@ -34,6 +35,15 @@ export default async function CourseDetailsPage({
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  // Redirect admins to the admin courses page — this detail view is for students/lecturers
+  const { data: userProfile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (userProfile?.role === 'admin') redirect('/dashboard/admin/courses')
 
   const { data: course, error } = await supabase
     .from('courses')
@@ -225,12 +235,18 @@ export default async function CourseDetailsPage({
           ) : (
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {materials?.map((file) => (
-                <Card key={file.id} className="flex flex-col p-4 hover:shadow-md hover:border-blue-200 transition-all duration-200 group">
-                  <div className="flex items-start justify-between mb-3">
+                <Card key={file.id} className="relative flex flex-col p-4 hover:shadow-md hover:border-blue-200 transition-all duration-200 group">
+                  <Link
+                    href={`/dashboard/courses/${courseId}/materials/${file.id}`}
+                    className="absolute inset-0 rounded-xl"
+                    aria-label={`Open ${file.title}`}
+                  />
+                  <div className="relative flex items-start justify-between mb-3 pointer-events-none">
                     <div className="bg-blue-50 p-2.5 rounded-lg group-hover:bg-blue-100 transition-colors">
                       <FileText className="h-6 w-6 text-blue-600" />
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-1 pointer-events-auto relative z-10">
+                      <OfflineMaterialButton material={file} />
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50" asChild>
                         <a href={file.file_url} target="_blank" rel="noopener noreferrer" download>
                           <Download className="h-4 w-4" />
@@ -246,7 +262,7 @@ export default async function CourseDetailsPage({
                       )}
                     </div>
                   </div>
-                  <div className="mt-auto">
+                  <div className="relative mt-auto pointer-events-none">
                     <h4 className="font-semibold text-sm line-clamp-1" title={file.title}>
                       {file.title}
                     </h4>

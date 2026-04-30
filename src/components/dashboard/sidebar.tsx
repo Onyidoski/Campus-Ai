@@ -13,38 +13,62 @@ import {
   MessageSquare,
   Calendar,
   Menu,
-  Video
+  Video,
+  Award,
+  Lightbulb,
+  HardDrive,
+  BarChart3,
+  Bell,
+  LucideIcon
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
-  SheetTitle // Imported to fix accessibility error
+  SheetTitle
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 
-const roleNavItems = {
+const roleNavItems: Record<string, { label: string; href: string; icon: LucideIcon; badge?: number }[]> = {
   student: [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'My Courses', href: '/dashboard/courses', icon: BookOpen },
+    { label: 'Timetable', href: '/dashboard/timetable', icon: Video },
+    { label: 'Exams', href: '/dashboard/exams', icon: Calendar },
     { label: 'Assignments', href: '/dashboard/assignments', icon: Calendar },
+    { label: 'Grades', href: '/dashboard/grades', icon: Award },
+    { label: 'Recommendations', href: '/dashboard/recommendations', icon: Lightbulb },
+    { label: 'Offline Materials', href: '/dashboard/offline-materials', icon: HardDrive },
     { label: 'AI Companion', href: '/dashboard/ai-chat', icon: MessageSquare },
   ],
   lecturer: [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Manage Courses', href: '/dashboard/courses', icon: BookOpen },
+    { label: 'Timetable', href: '/dashboard/timetable', icon: Video },
+    { label: 'Exams', href: '/dashboard/exams', icon: Calendar },
+    { label: 'Grades', href: '/dashboard/grades', icon: Award },
+    { label: 'Recommendations', href: '/dashboard/recommendations', icon: Lightbulb },
+    { label: 'Offline Materials', href: '/dashboard/offline-materials', icon: HardDrive },
     { label: 'Student Progress', href: '/dashboard/students', icon: Users },
   ],
   admin: [
-    { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Users', href: '/dashboard/users', icon: Users },
-    { label: 'Settings', href: '/dashboard/settings', icon: Settings },
+    { label: 'Overview', href: '/dashboard/admin', icon: LayoutDashboard },
+    { label: 'User Management', href: '/dashboard/admin/users', icon: Users },
+    { label: 'Courses', href: '/dashboard/admin/courses', icon: BookOpen },
+    { label: 'Exams', href: '/dashboard/admin/exams', icon: Calendar },
+    { label: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 },
   ]
 }
 
-export function Sidebar({ userRole }: { userRole: 'student' | 'lecturer' | 'admin' }) {
+export function Sidebar({
+  userRole,
+  unreadNotifications = 0,
+}: {
+  userRole: 'student' | 'lecturer' | 'admin'
+  unreadNotifications?: number
+}) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -55,7 +79,14 @@ export function Sidebar({ userRole }: { userRole: 'student' | 'lecturer' | 'admi
     router.push('/login')
   }
 
-  const navItems = roleNavItems[userRole as keyof typeof roleNavItems] || roleNavItems.student
+  const baseNavItems = roleNavItems[userRole as keyof typeof roleNavItems] || roleNavItems.student
+  const navItems = userRole === 'admin'
+    ? baseNavItems
+    : [
+        ...baseNavItems.slice(0, 1),
+        { label: 'Notifications', href: '/dashboard/notifications', icon: Bell, badge: unreadNotifications },
+        ...baseNavItems.slice(1),
+      ]
 
   const NavContent = () => (
     <div className="flex h-full flex-col justify-between py-4">
@@ -72,7 +103,12 @@ export function Sidebar({ userRole }: { userRole: 'student' | 'lecturer' | 'admi
                   className={cn("w-full justify-start", pathname === item.href && "bg-gray-200")}
                 >
                   <item.icon className="mr-2 h-4 w-4" />
-                  {item.label}
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {typeof item.badge === 'number' && item.badge > 0 && (
+                    <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold leading-none text-white">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  )}
                 </Button>
               </Link>
             ))}

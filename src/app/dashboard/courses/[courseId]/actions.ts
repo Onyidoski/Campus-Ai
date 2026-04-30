@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
 import { uploadToR2 } from '@/utils/r2'
+import { createNotifications } from '@/lib/notifications'
 import { embedMany } from 'ai'
 import { google } from '@ai-sdk/google'
 import { PDFParse } from 'pdf-parse'
@@ -204,19 +205,44 @@ export async function createAssignment(formData: FormData, courseId: string) {
     }
   }
 
+  const dueDateIso = new Date(dueDate).toISOString()
+
   const { error } = await supabase
     .from('assignments')
     .insert({
       course_id: courseId,
       title,
       description,
-      due_date: new Date(dueDate).toISOString(),
+      due_date: dueDateIso,
       attachment_url: attachmentUrl,
     })
 
   if (error) return { error: error.message }
 
+  const { data: course } = await supabase
+    .from('courses')
+    .select('code')
+    .eq('id', courseId)
+    .single()
+
+  const { data: enrollments } = await supabase
+    .from('enrollments')
+    .select('student_id')
+    .eq('course_id', courseId)
+
+  await createNotifications(
+    supabase,
+    (enrollments || []).map((enrollment) => ({
+      user_id: enrollment.student_id,
+      type: 'assignment',
+      title: `New assignment: ${title}`,
+      message: `${course?.code || 'Course'} assignment is due ${new Date(dueDateIso).toLocaleString()}.`,
+      href: `/dashboard/courses/${courseId}?tab=assignments`,
+    }))
+  )
+
   revalidatePath(`/dashboard/courses/${courseId}`)
+  revalidatePath('/dashboard/notifications')
   return { success: 'Assignment created successfully!' }
 }
 
@@ -388,7 +414,32 @@ export async function createAnnouncement(formData: FormData, courseId: string) {
 
   if (error) return { error: error.message }
 
+  if (isUrgent) {
+    const { data: course } = await supabase
+      .from('courses')
+      .select('code')
+      .eq('id', courseId)
+      .single()
+
+    const { data: enrollments } = await supabase
+      .from('enrollments')
+      .select('student_id')
+      .eq('course_id', courseId)
+
+    await createNotifications(
+      supabase,
+      (enrollments || []).map((enrollment) => ({
+        user_id: enrollment.student_id,
+        type: 'announcement',
+        title: `Urgent announcement: ${course?.code || 'Course'}`,
+        message: content,
+        href: `/dashboard/courses/${courseId}?tab=stream`,
+      }))
+    )
+  }
+
   revalidatePath(`/dashboard/courses/${courseId}`)
+  revalidatePath('/dashboard/notifications')
   return { success: 'Announcement posted!' }
 }
 
@@ -446,7 +497,24 @@ export async function scheduleClass(formData: FormData, courseId: string) {
 
   if (error) return { error: error.message }
 
+  const { data: enrollments } = await supabase
+    .from('enrollments')
+    .select('student_id')
+    .eq('course_id', courseId)
+
+  await createNotifications(
+    supabase,
+    (enrollments || []).map((enrollment) => ({
+      user_id: enrollment.student_id,
+      type: 'class',
+      title: `Online class scheduled: ${title}`,
+      message: `${course?.code || 'Course'} is scheduled for ${new Date(scheduledAt).toLocaleString()}.`,
+      href: `/dashboard/courses/${courseId}?tab=classes`,
+    }))
+  )
+
   revalidatePath(`/dashboard/courses/${courseId}`)
+  revalidatePath('/dashboard/notifications')
   return { success: 'Class scheduled successfully!' }
 }
 

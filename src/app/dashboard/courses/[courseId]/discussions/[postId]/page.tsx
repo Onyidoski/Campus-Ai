@@ -11,7 +11,7 @@ import { deletePost } from '../actions'
 export default async function DiscussionPostPage({
     params,
 }: {
-    params: Promise<{ courseId: string; postId: string }> | { courseId: string; postId: string }
+    params: Promise<{ courseId: string; postId: string }>
 }) {
     const supabase = await createClient()
     const resolvedParams = await params

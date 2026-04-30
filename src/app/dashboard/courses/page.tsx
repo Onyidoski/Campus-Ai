@@ -22,11 +22,19 @@ export default async function CoursesPage() {
     .single()
 
   const isLecturer = profile?.role === 'lecturer'
+  const isAdmin = profile?.role === 'admin'
 
   let courses: any[] = []
   let availableCoursesToRegister: any[] = []
 
-  if (isLecturer) {
+  if (isAdmin) {
+    // ADMINS: See all courses across the platform
+    const { data } = await supabase
+      .from('courses')
+      .select('*, profiles:lecturer_id(full_name)')
+      .order('created_at', { ascending: false })
+    courses = data || []
+  } else if (isLecturer) {
     // LECTURERS: Fetch courses they created
     const { data } = await supabase
       .from('courses')
@@ -67,12 +75,14 @@ export default async function CoursesPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {isLecturer ? 'Manage Courses' : 'My Enrolled Courses'}
+            {isAdmin ? 'All Courses' : isLecturer ? 'Manage Courses' : 'My Enrolled Courses'}
           </h1>
           <p className="text-muted-foreground">
-            {isLecturer 
-              ? 'Create and manage your course materials and assignments.' 
-              : 'View materials and submit assignments for your active classes.'}
+            {isAdmin
+              ? 'Overview of all courses on the platform.'
+              : isLecturer 
+                ? 'Create and manage your course materials and assignments.' 
+                : 'View materials and submit assignments for your active classes.'}
           </p>
         </div>
         
@@ -80,7 +90,7 @@ export default async function CoursesPage() {
         <div className="flex gap-2">
           {isLecturer ? (
             <AddCourseDialog /> 
-          ) : (
+          ) : !isAdmin && (
             <>
               {/* Optional: Keep the Join Code button as a backup for out-of-level electives */}
               <JoinCourseDialog />
@@ -97,12 +107,14 @@ export default async function CoursesPage() {
           <div className="col-span-full flex flex-col items-center justify-center py-16 text-center border-2 border-dashed rounded-lg bg-gray-50/50">
             <BookOpen className="h-10 w-10 text-gray-300 mb-4" />
             <h3 className="text-lg font-medium text-gray-900">
-              {isLecturer ? 'No courses found' : 'Not enrolled in any courses'}
+              {isAdmin ? 'No courses on the platform yet' : isLecturer ? 'No courses found' : 'Not enrolled in any courses'}
             </h3>
             <p className="text-sm text-gray-500 max-w-sm mt-1">
-              {isLecturer 
-                ? "You haven't created any courses yet. Click the button above to get started." 
-                : "Click the 'Register Courses' button above to select classes for your level."}
+              {isAdmin
+                ? 'Lecturers haven\'t created any courses yet.'
+                : isLecturer 
+                  ? "You haven't created any courses yet. Click the button above to get started." 
+                  : "Click the 'Register Courses' button above to select classes for your level."}
             </p>
           </div>
         ) : (
@@ -125,6 +137,11 @@ export default async function CoursesPage() {
                 <CardDescription className="line-clamp-2 min-h-[40px]">
                   {course.description || "No description provided for this course."}
                 </CardDescription>
+                {isAdmin && course.profiles?.full_name && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Lecturer: {course.profiles.full_name}
+                  </p>
+                )}
               </CardHeader>
               
               <CardContent>
@@ -132,7 +149,7 @@ export default async function CoursesPage() {
                   href={`/dashboard/courses/${course.id}`} 
                   className="inline-flex items-center text-sm font-medium text-primary hover:underline underline-offset-4"
                 >
-                  {isLecturer ? 'Manage Materials' : 'Enter Course'} 
+                  {isAdmin ? 'View Course' : isLecturer ? 'Manage Materials' : 'Enter Course'} 
                   <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
                 </Link>
               </CardContent>
