@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Users, Shield, GraduationCap, UserCheck, UserX, Search } from 'lucide-react'
+import { Users, Shield, GraduationCap, UserCheck, User, Search } from 'lucide-react'
 import { UserActionsCell } from '@/components/dashboard/admin/user-actions-cell'
 
 export default async function AdminUsersPage({
@@ -60,55 +60,48 @@ export default async function AdminUsersPage({
   ])
 
   const roleTabs = [
-    { key: 'all', label: 'All', count: totalAll || 0, icon: Users, color: 'text-gray-600 bg-gray-100' },
-    { key: 'student', label: 'Students', count: totalStudents || 0, icon: GraduationCap, color: 'text-blue-600 bg-blue-50' },
-    { key: 'lecturer', label: 'Lecturers', count: totalLecturers || 0, icon: UserCheck, color: 'text-violet-600 bg-violet-50' },
-    { key: 'admin', label: 'Admins', count: totalAdmins || 0, icon: Shield, color: 'text-red-600 bg-red-50' },
-    { key: 'parent', label: 'Parents', count: totalParents || 0, icon: UserX, color: 'text-amber-600 bg-amber-50' },
+    { key: 'all', label: 'All', count: totalAll || 0, icon: Users, color: 'text-slate-600 bg-slate-50 border border-slate-100/70' },
+    { key: 'student', label: 'Students', count: totalStudents || 0, icon: GraduationCap, color: 'text-indigo-650 bg-indigo-50 border border-indigo-100/40' },
+    { key: 'lecturer', label: 'Lecturers', count: totalLecturers || 0, icon: UserCheck, color: 'text-indigo-650 bg-indigo-50 border border-indigo-100/40' },
+    { key: 'admin', label: 'Admins', count: totalAdmins || 0, icon: Shield, color: 'text-rose-600 bg-rose-50 border border-rose-100/40' },
+    { key: 'parent', label: 'Parents', count: totalParents || 0, icon: User, color: 'text-slate-655 bg-slate-50 border border-slate-100' },
   ]
-
-  const roleColors: Record<string, string> = {
-    student: 'bg-blue-50 text-blue-700 border-blue-200',
-    lecturer: 'bg-violet-50 text-violet-700 border-violet-200',
-    admin: 'bg-red-50 text-red-700 border-red-200',
-    parent: 'bg-amber-50 text-amber-700 border-amber-200',
-  }
 
   return (
     <div className="space-y-6">
       {/* HEADER */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
-            <Users className="h-4 w-4 text-white" />
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2.5">
+          <div className="h-9 w-9 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0 border border-indigo-100/40">
+            <Users className="h-4.5 w-4.5 text-indigo-650" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-800">User Management</h1>
         </div>
-        <p className="text-muted-foreground">
-          View and manage all registered users on the platform.
+        <p className="text-xs text-slate-450 mt-1 pl-11">
+          View, audit, and modify registered accounts across the platform.
         </p>
       </div>
 
       {/* ROLE FILTER TABS */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2.5 pb-1">
         {roleTabs.map((tab) => {
           const isActive = roleFilter === tab.key
           return (
             <a
               key={tab.key}
               href={`/dashboard/admin/users?role=${tab.key}${searchQuery ? `&q=${searchQuery}` : ''}`}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-300 border shadow-xs ${
                 isActive
-                  ? 'bg-white border-gray-300 shadow-sm text-gray-900'
-                  : 'bg-transparent border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                  ? 'bg-white border-slate-200 text-slate-800 shadow-sm scale-[1.01]'
+                  : 'bg-white/50 border-slate-100/70 text-slate-500 hover:bg-white hover:border-slate-200 hover:text-slate-700 hover:shadow-xs'
               }`}
             >
-              <div className={`h-6 w-6 rounded-md flex items-center justify-center ${tab.color}`}>
+              <div className={`h-6 w-6 rounded-lg flex items-center justify-center ${tab.color} shrink-0`}>
                 <tab.icon className="h-3.5 w-3.5" />
               </div>
-              {tab.label}
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                isActive ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-600'
+              <span>{tab.label}</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full leading-none transition-colors ${
+                isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
               }`}>
                 {tab.count}
               </span>
@@ -119,82 +112,90 @@ export default async function AdminUsersPage({
 
       {/* SEARCH BAR */}
       <form className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
         <input
           type="text"
           name="q"
           defaultValue={searchQuery}
           placeholder="Search by name or email..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm
-            focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400
-            transition-all duration-200 shadow-sm"
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200/80 bg-white text-xs font-medium text-slate-700
+            focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-400
+            placeholder:text-slate-400 transition-all duration-200 shadow-xs"
         />
         {/* Preserve the role filter when searching */}
         <input type="hidden" name="role" value={roleFilter} />
       </form>
 
       {/* USERS TABLE */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden bg-white border border-slate-100 shadow-sm rounded-2xl">
         <CardContent className="p-0">
           {(!users || users.length === 0) ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <Users className="mx-auto h-10 w-10 mb-3 opacity-20" />
-              <h3 className="text-lg font-medium text-gray-900">No Users Found</h3>
-              <p className="text-sm mt-1">
-                {searchQuery ? `No results for "${searchQuery}".` : 'No users in this category.'}
+            <div className="text-center py-16 text-slate-400">
+              <Users className="mx-auto h-8 w-8 mb-3 opacity-20" />
+              <h3 className="text-sm font-medium text-slate-800">No Users Found</h3>
+              <p className="text-xs mt-1 font-light">
+                {searchQuery ? `No results for "${searchQuery}".` : 'No users registered under this role.'}
               </p>
             </div>
           ) : (
             <>
               {/* Desktop Table Header */}
-              <div className="hidden md:grid md:grid-cols-12 gap-4 px-6 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50/60 border-b">
+              <div className="hidden md:grid md:grid-cols-12 gap-4 px-6 py-4 text-[10px] font-bold text-slate-450 uppercase tracking-wider bg-slate-50/50 border-b border-slate-100">
                 <div className="col-span-4">User</div>
                 <div className="col-span-2">Role</div>
-                <div className="col-span-2">Level / Department</div>
+                <div className="col-span-3">Academic Info</div>
                 <div className="col-span-2">Joined</div>
-                <div className="col-span-2 text-right">Actions</div>
+                <div className="col-span-1 text-right">Actions</div>
               </div>
 
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-slate-100">
                 {users.map((u: any) => {
                   const initial = u.full_name?.charAt(0).toUpperCase() || '?'
                   const date = u.created_at ? new Date(u.created_at) : null
                   const isSelf = u.id === user.id
 
                   return (
-                    <div key={u.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 px-6 py-4 hover:bg-gray-50/50 transition-colors items-center">
+                    <div key={u.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 px-6 py-4 hover:bg-slate-50/30 transition-all duration-150 items-center">
                       {/* User Info */}
                       <div className="md:col-span-4 flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                        <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-xs font-extrabold shrink-0 border ${
                           u.role === 'admin'
-                            ? 'bg-gradient-to-br from-red-100 to-orange-100 text-red-700'
+                            ? 'bg-rose-50 border-rose-100 text-rose-700'
                             : u.role === 'lecturer'
-                              ? 'bg-gradient-to-br from-violet-100 to-indigo-100 text-violet-700'
-                              : 'bg-gradient-to-br from-blue-100 to-sky-100 text-blue-700'
+                              ? 'bg-indigo-50 border-indigo-100 text-indigo-700'
+                              : 'bg-slate-50 border border-slate-100 text-slate-700'
                         }`}>
                           {initial}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-semibold text-gray-900 truncate">{u.full_name}</p>
+                            <p className="text-xs font-bold text-slate-800 truncate">{u.full_name}</p>
                             {isSelf && (
-                              <Badge variant="secondary" className="text-[9px] px-1 py-0 h-3.5 bg-gray-200">You</Badge>
+                              <span className="bg-slate-100 border border-slate-200 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider leading-none shrink-0">
+                                You
+                              </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-gray-400 truncate">{u.email}</p>
+                          <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">{u.email}</p>
                         </div>
                       </div>
 
                       {/* Role */}
                       <div className="md:col-span-2">
-                        <Badge className={`text-[10px] px-1.5 py-0 h-5 capitalize ${roleColors[u.role] || 'bg-gray-100 text-gray-700'}`}>
+                        <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full capitalize border ${
+                          u.role === 'admin'
+                            ? 'bg-rose-50 border-rose-100/40 text-rose-600'
+                            : u.role === 'lecturer'
+                              ? 'bg-indigo-50 border-indigo-100/40 text-indigo-650'
+                              : 'bg-slate-50 border border-slate-200/50 text-slate-655'
+                        }`}>
                           {u.role}
-                        </Badge>
+                        </span>
                       </div>
 
                       {/* Level / Department */}
-                      <div className="md:col-span-2">
-                        <p className="text-xs text-gray-600">
+                      <div className="md:col-span-3">
+                        <p className="text-xs text-slate-600 font-medium truncate">
                           {u.role === 'student'
                             ? `${u.academic_level || '—'} Level`
                             : u.department || '—'
@@ -204,15 +205,17 @@ export default async function AdminUsersPage({
 
                       {/* Joined Date */}
                       <div className="md:col-span-2">
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-slate-450 font-medium">
                           {date ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                         </p>
                       </div>
 
                       {/* Actions */}
-                      <div className="md:col-span-2 flex justify-end">
+                      <div className="md:col-span-1 flex justify-end">
                         {isSelf ? (
-                          <span className="text-[10px] text-gray-400 italic">Current user</span>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md leading-none select-none">
+                            Current User
+                          </span>
                         ) : (
                           <UserActionsCell userId={u.id} currentRole={u.role} userName={u.full_name} />
                         )}

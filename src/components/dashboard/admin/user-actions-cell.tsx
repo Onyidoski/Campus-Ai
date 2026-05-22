@@ -75,7 +75,7 @@ export function UserActionsCell({ userId, currentRole, userName }: UserActionsCe
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-gray-400 hover:text-gray-700"
+            className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-lg transition-all"
             disabled={loading}
           >
             <MoreHorizontal className="h-4 w-4" />

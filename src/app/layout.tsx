@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Campus AI — AI-Powered Campus Assistant",
   description:
-    "An AI-Powered Campus Assistant with Integrated Learning System for Caleb University. Access courses, materials, assignments, and AI-driven study tools in one place.",
+    "An AI-Powered Campus Assistant with Integrated Learning System. Access courses, materials, assignments, and AI-driven study tools in one place.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#4F46E5",
+  themeColor: "#047857",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -42,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

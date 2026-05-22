@@ -42,7 +42,7 @@ export function CampusAnnouncementDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 shadow-md shadow-red-200/40">
+        <Button className="bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-sm transition-all duration-200">
           <Megaphone className="mr-2 h-4 w-4" /> Campus Announcement
         </Button>
       </DialogTrigger>
@@ -101,7 +101,7 @@ export function CampusAnnouncementDialog() {
           </label>
 
           <DialogFooter>
-            <Button type="submit" disabled={loading} className="w-full sm:w-auto bg-gradient-to-r from-red-600 to-orange-500">
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-semibold">
               {loading ? 'Posting...' : 'Post Announcement'}
             </Button>
           </DialogFooter>

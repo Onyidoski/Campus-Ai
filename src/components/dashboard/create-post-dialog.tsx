@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createPost } from '@/app/dashboard/courses/[courseId]/discussions/actions'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,6 +22,7 @@ import { HelpCircle } from 'lucide-react'
 export function CreatePostDialog({ courseId }: { courseId: string }) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    const router = useRouter()
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -36,14 +38,16 @@ export function CreatePostDialog({ courseId }: { courseId: string }) {
         } else {
             toast.success(result.success)
             setOpen(false)
+            router.refresh()
         }
     }
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto">
-                    <HelpCircle className="mr-2 h-4 w-4" /> Ask a Question
+                <Button className="h-10 w-full rounded-xl sm:w-auto">
+                    <HelpCircle className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">Ask a question</span>
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[550px]">

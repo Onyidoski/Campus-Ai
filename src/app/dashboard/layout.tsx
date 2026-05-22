@@ -43,7 +43,7 @@ export default async function DashboardLayout({
       <Sidebar userRole={userRole} unreadNotifications={unreadNotifications} />
       
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50/10">
+      <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4 md:p-8 bg-gray-50/10">
         {children}
       </main>
     </div>

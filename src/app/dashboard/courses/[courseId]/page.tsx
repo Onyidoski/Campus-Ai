@@ -5,18 +5,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { FileText, MessageSquare, Users, BookOpen, Settings, Download, Calendar, Paperclip, Trash2, Megaphone, AlertCircle, HelpCircle, CheckCircle2, Brain, ClipboardList, Layers, FileSearch, Video, Clock, ArrowRight } from 'lucide-react'
+import { FileText, Users, BookOpen, Settings, Download, Calendar, Paperclip, Trash2, Brain, ClipboardList, Layers, FileSearch, Video, Clock, ArrowRight } from 'lucide-react'
 import { UploadMaterialDialog } from '@/components/dashboard/upload-material-dialog'
 import { AddAssignmentDialog } from '@/components/dashboard/add-assignment-dialog'
 import { EditAssignmentDialog } from '@/components/dashboard/edit-assignment-dialog'
 import { SubmitAssignmentDialog } from '@/components/dashboard/submit-assignment-dialog'
-import { AddAnnouncementDialog } from '@/components/dashboard/add-announcement-dialog'
 import { AITutorSheet } from '@/components/dashboard/ai-tutor-sheet'
-import { deleteMaterial, deleteAssignment, deleteAnnouncement, deleteClass } from './actions'
-import { CreatePostDialog } from '@/components/dashboard/create-post-dialog'
+import { deleteAssignment, deleteClass } from './actions'
 import { StudyToolsPanel } from '@/components/dashboard/study/study-tools-panel'
 import { ScheduleClassDialog } from '@/components/dashboard/schedule-class-dialog'
-import { OfflineMaterialButton } from '@/components/dashboard/offline-material-button'
+import { MaterialsTabContent } from '@/components/dashboard/materials-tab-content'
+import { CourseStreamTab } from '@/components/dashboard/course-stream-tab'
+import { CourseDiscussionsTab } from '@/components/dashboard/course-discussions-tab'
 
 export default async function CourseDetailsPage({
   params,
@@ -106,9 +106,9 @@ export default async function CourseDetailsPage({
     .order('scheduled_at', { ascending: true })
 
   return (
-    <div className="space-y-6 relative pb-10">
+    <div className="relative space-y-6 pb-24 sm:pb-16">
       {/* HEADER SECTION */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b pb-4">
+      <div className="flex flex-col gap-2 border-b pb-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <span className="text-sm font-medium bg-gray-100 px-2 py-0.5 rounded text-gray-700">
@@ -123,7 +123,7 @@ export default async function CourseDetailsPage({
               </div>
             )}
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">{course.title}</h1>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{course.title}</h1>
           <p className="text-muted-foreground mt-1">
             Lecturer: {course.profiles?.full_name || 'Unknown'}
           </p>
@@ -141,139 +141,38 @@ export default async function CourseDetailsPage({
 
       {/* TABS NAVIGATION */}
       <Tabs defaultValue={activeTab} className="w-full">
-        <TabsList className={`grid w-full ${isLecturer ? 'grid-cols-7 lg:w-[840px]' : 'grid-cols-6 lg:w-[720px]'}`}>
-          <TabsTrigger value="stream">Stream</TabsTrigger>
-          <TabsTrigger value="materials">Materials</TabsTrigger>
-          <TabsTrigger value="assignments">Assignments</TabsTrigger>
-          <TabsTrigger value="classes">Classes</TabsTrigger>
-          <TabsTrigger value="discussions">Discussions</TabsTrigger>
-          <TabsTrigger value="study">Study Tools</TabsTrigger>
-          {isLecturer && <TabsTrigger value="people">People</TabsTrigger>}
-        </TabsList>
+        <div className="-mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <TabsList className="inline-flex h-auto min-h-9 w-max max-w-none shrink-0 justify-start gap-0.5 p-1">
+              <TabsTrigger value="stream" className="shrink-0 flex-none px-3">Stream</TabsTrigger>
+              <TabsTrigger value="materials" className="shrink-0 flex-none px-3">Materials</TabsTrigger>
+              <TabsTrigger value="assignments" className="shrink-0 flex-none px-3">Assignments</TabsTrigger>
+              <TabsTrigger value="classes" className="shrink-0 flex-none px-3">Classes</TabsTrigger>
+              <TabsTrigger value="discussions" className="shrink-0 flex-none px-3">Discussions</TabsTrigger>
+              <TabsTrigger value="study" className="shrink-0 flex-none px-3">Study Tools</TabsTrigger>
+              {isLecturer && (
+                <TabsTrigger value="people" className="shrink-0 flex-none px-3">People</TabsTrigger>
+              )}
+            </TabsList>
+          </div>
+        </div>
 
         {/* 1. STREAM TAB */}
-        <TabsContent value="stream" className="mt-6 space-y-4">
-
-          {isLecturer && (
-            <div className="flex justify-end mb-4">
-              <AddAnnouncementDialog courseId={courseId} />
-            </div>
-          )}
-
-          {announcements?.length === 0 ? (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">
-                  <MessageSquare className="mx-auto h-12 w-12 mb-3 opacity-20" />
-                  <h3 className="text-lg font-medium text-gray-900">Class Stream is Empty</h3>
-                  <p className="mt-1">No announcements have been posted yet.</p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {announcements?.map((announcement) => {
-                const date = new Date(announcement.created_at)
-
-                return (
-                  <Card key={announcement.id} className={`overflow-hidden transition-all ${announcement.is_urgent ? 'border-l-4 border-l-red-500 bg-red-50/30' : ''
-                    }`}>
-                    <CardHeader className="pb-2 pt-4 flex flex-row items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${announcement.is_urgent ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
-                          }`}>
-                          {announcement.is_urgent ? <AlertCircle className="h-5 w-5" /> : <Megaphone className="h-5 w-5" />}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm">{announcement.profiles?.full_name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {date.toLocaleDateString()} at {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                      </div>
-
-                      {isLecturer && (
-                        <form action={deleteAnnouncement.bind(null, announcement.id, courseId)}>
-                          <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-600" title="Delete Announcement">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </form>
-                      )}
-                    </CardHeader>
-
-                    <CardContent className="pt-2 pb-5">
-                      {announcement.is_urgent && (
-                        <Badge variant="destructive" className="mb-2">URGENT</Badge>
-                      )}
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed text-gray-800">
-                        {announcement.content}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
+        <TabsContent value="stream" className="mt-6">
+          <CourseStreamTab
+            announcements={announcements || []}
+            courseId={courseId}
+            isLecturer={isLecturer}
+          />
         </TabsContent>
 
         {/* 2. MATERIALS TAB */}
         <TabsContent value="materials" className="mt-6 space-y-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium">Course Materials</h3>
-          </div>
-
-          {materials?.length === 0 ? (
-            <Card>
-              <CardContent className="py-10">
-                <div className="text-center text-muted-foreground">
-                  <FileText className="mx-auto h-10 w-10 mb-3 opacity-20" />
-                  <p>No materials uploaded yet.</p>
-                  {isLecturer && <p className="text-sm">Use the upload button at the top to add your first file.</p>}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {materials?.map((file) => (
-                <Card key={file.id} className="relative flex flex-col p-4 hover:shadow-md hover:border-blue-200 transition-all duration-200 group">
-                  <Link
-                    href={`/dashboard/courses/${courseId}/materials/${file.id}`}
-                    className="absolute inset-0 rounded-xl"
-                    aria-label={`Open ${file.title}`}
-                  />
-                  <div className="relative flex items-start justify-between mb-3 pointer-events-none">
-                    <div className="bg-blue-50 p-2.5 rounded-lg group-hover:bg-blue-100 transition-colors">
-                      <FileText className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div className="flex items-center gap-1 pointer-events-auto relative z-10">
-                      <OfflineMaterialButton material={file} />
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50" asChild>
-                        <a href={file.file_url} target="_blank" rel="noopener noreferrer" download>
-                          <Download className="h-4 w-4" />
-                        </a>
-                      </Button>
-
-                      {isLecturer && (
-                        <form action={deleteMaterial.bind(null, file.id, courseId)}>
-                          <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50" title="Delete Material">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </form>
-                      )}
-                    </div>
-                  </div>
-                  <div className="relative mt-auto pointer-events-none">
-                    <h4 className="font-semibold text-sm line-clamp-1" title={file.title}>
-                      {file.title}
-                    </h4>
-                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1 font-medium">
-                      {file.file_type} • Added recently
-                    </p>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
+          <MaterialsTabContent
+            materials={(materials || []) as any[]}
+            courseId={courseId}
+            isLecturer={isLecturer}
+          />
         </TabsContent>
 
         {/* 3. ASSIGNMENTS TAB */}
@@ -375,69 +274,8 @@ export default async function CourseDetailsPage({
         </TabsContent>
 
         {/* 4. DISCUSSIONS TAB */}
-        <TabsContent value="discussions" className="mt-6 space-y-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium">Course Discussions</h3>
-            <CreatePostDialog courseId={courseId} />
-          </div>
-
-          {discussionPosts?.length === 0 ? (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center text-muted-foreground">
-                  <HelpCircle className="mx-auto h-12 w-12 mb-3 opacity-20" />
-                  <h3 className="text-lg font-medium text-gray-900">No Discussions Yet</h3>
-                  <p className="mt-1">Be the first to ask a question or start a topic.</p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {discussionPosts?.map((post: any) => {
-                const date = new Date(post.created_at)
-                const replyCount = post.discussion_replies?.[0]?.count || 0
-                const initial = post.profiles?.full_name?.charAt(0).toUpperCase() || '?'
-
-                return (
-                  <Link key={post.id} href={`/dashboard/courses/${courseId}/discussions/${post.id}`}>
-                    <Card className={`hover:shadow-md hover:border-blue-200 transition-all duration-200 cursor-pointer ${post.is_answered ? 'border-l-4 border-l-green-500' : ''
-                      }`}>
-                      <CardContent className="py-4">
-                        <div className="flex items-start gap-3">
-                          <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 mt-0.5 ${post.profiles?.role === 'lecturer'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-gray-100 text-gray-700'
-                            }`}>
-                            {initial}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="font-semibold text-gray-900 line-clamp-1">{post.title}</h4>
-                              {post.is_answered && (
-                                <Badge className="bg-green-50 text-green-700 border-green-200 hover:bg-green-50 text-[10px] px-1.5 py-0">
-                                  <CheckCircle2 className="mr-1 h-3 w-3" /> Answered
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">{post.content}</p>
-                            <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                              <span>{post.profiles?.full_name}</span>
-                              <span>•</span>
-                              <span>{date.toLocaleDateString()}</span>
-                              <span>•</span>
-                              <span className="flex items-center gap-1">
-                                <MessageSquare className="h-3 w-3" /> {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
+        <TabsContent value="discussions" className="mt-6">
+          <CourseDiscussionsTab posts={discussionPosts || []} courseId={courseId} />
         </TabsContent>
 
         {/* 5. ONLINE CLASSES TAB */}

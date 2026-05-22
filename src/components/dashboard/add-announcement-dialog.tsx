@@ -41,8 +41,8 @@ export function AddAnnouncementDialog({ courseId }: { courseId: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full sm:w-auto">
-          <Megaphone className="mr-2 h-4 w-4" /> Post Announcement
+        <Button className="w-full rounded-xl sm:w-auto">
+          <Megaphone className="mr-2 h-4 w-4" /> Post announcement
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
@@ -66,14 +66,14 @@ export function AddAnnouncementDialog({ courseId }: { courseId: string }) {
             />
           </div>
 
-          <label className="flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-red-50 transition-colors border-red-100 bg-red-50/50">
-            <input 
-              type="checkbox" 
-              name="isUrgent" 
-              className="h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-600"
+          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3 transition-colors hover:border-rose-200 hover:bg-rose-50/50 has-[:checked]:border-rose-200 has-[:checked]:bg-rose-50/60">
+            <input
+              type="checkbox"
+              name="isUrgent"
+              className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
             />
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <span className="text-sm font-medium text-red-800">Mark as Urgent</span>
+            <AlertCircle className="h-4 w-4 text-slate-500" />
+            <span className="text-sm font-medium text-slate-700">Mark as urgent</span>
           </label>
 
           <DialogFooter>

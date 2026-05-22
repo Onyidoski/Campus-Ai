@@ -16,6 +16,15 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "picsum.photos",
+        pathname: "/**",
+      },
+    ],
+  },
   serverExternalPackages: ['pdf-parse', 'pdfjs-dist'],
   turbopack: {},
   experimental: {

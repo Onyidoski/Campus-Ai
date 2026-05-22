@@ -2,11 +2,8 @@ import { createClient } from '@/utils/supabase/server'
 import { AddCourseDialog } from '@/components/dashboard/add-course-dialog'
 import { JoinCourseDialog } from '@/components/dashboard/join-course-dialog'
 import { RegisterCoursesDialog } from '@/components/dashboard/register-courses-dialog'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { CoursesGridWithSearch } from '@/components/dashboard/courses-grid-with-search'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { BookOpen } from 'lucide-react'
 
 export default async function CoursesPage() {
   const supabase = await createClient()
@@ -23,6 +20,7 @@ export default async function CoursesPage() {
 
   const isLecturer = profile?.role === 'lecturer'
   const isAdmin = profile?.role === 'admin'
+  const isStudent = !isAdmin && !isLecturer
 
   let courses: any[] = []
   let availableCoursesToRegister: any[] = []
@@ -70,14 +68,13 @@ export default async function CoursesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* PAGE HEADER */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-8">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">
             {isAdmin ? 'All Courses' : isLecturer ? 'Manage Courses' : 'My Enrolled Courses'}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="mt-1 text-sm text-slate-600 md:text-base">
             {isAdmin
               ? 'Overview of all courses on the platform.'
               : isLecturer 
@@ -86,77 +83,49 @@ export default async function CoursesPage() {
           </p>
         </div>
         
-        {/* Dynamic Buttons Based on Role */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {isLecturer ? (
             <AddCourseDialog /> 
           ) : !isAdmin && (
             <>
-              {/* Optional: Keep the Join Code button as a backup for out-of-level electives */}
               <JoinCourseDialog />
-              {/* The new auto-suggest Registration checklist */}
               <RegisterCoursesDialog availableCourses={availableCoursesToRegister} />
             </>
           )}
         </div>
       </div>
 
-      {/* COURSES GRID */}
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {courses?.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center py-16 text-center border-2 border-dashed rounded-lg bg-gray-50/50">
-            <BookOpen className="h-10 w-10 text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">
-              {isAdmin ? 'No courses on the platform yet' : isLecturer ? 'No courses found' : 'Not enrolled in any courses'}
-            </h3>
-            <p className="text-sm text-gray-500 max-w-sm mt-1">
-              {isAdmin
-                ? 'Lecturers haven\'t created any courses yet.'
-                : isLecturer 
-                  ? "You haven't created any courses yet. Click the button above to get started." 
-                  : "Click the 'Register Courses' button above to select classes for your level."}
+      {isStudent && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Enrolled</p>
+            <p className="mt-2 font-mono text-2xl font-semibold text-slate-900">{courses.length}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Available to Register</p>
+            <p className="mt-2 font-mono text-2xl font-semibold text-slate-900">{availableCoursesToRegister.length}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Academic Level</p>
+            <p className="mt-2 font-mono text-2xl font-semibold text-slate-900">
+              {profile?.academic_level ? `${profile.academic_level} Lvl` : 'N/A'}
             </p>
           </div>
-        ) : (
-          courses?.map((course) => (
-            <Card key={course.id} className="group hover:shadow-md transition-all duration-200 border-gray-200">
-              <CardHeader>
-                <div className="flex justify-between items-start mb-2">
-                  <Badge variant="outline" className="font-mono text-xs">
-                    {course.code}
-                  </Badge>
-                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
-                    {course.level} Lvl
-                  </Badge>
-                </div>
-                
-                <CardTitle className="text-lg font-semibold leading-tight pb-1">
-                  {course.title}
-                </CardTitle>
-                
-                <CardDescription className="line-clamp-2 min-h-[40px]">
-                  {course.description || "No description provided for this course."}
-                </CardDescription>
-                {isAdmin && course.profiles?.full_name && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Lecturer: {course.profiles.full_name}
-                  </p>
-                )}
-              </CardHeader>
-              
-              <CardContent>
-                <Link 
-                  href={`/dashboard/courses/${course.id}`} 
-                  className="inline-flex items-center text-sm font-medium text-primary hover:underline underline-offset-4"
-                >
-                  {isAdmin ? 'View Course' : isLecturer ? 'Manage Materials' : 'Enter Course'} 
-                  <span className="ml-1 transition-transform group-hover:translate-x-1">→</span>
-                </Link>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+        </div>
+      )}
+
+      <CoursesGridWithSearch
+        courses={courses}
+        role={isAdmin ? 'admin' : isLecturer ? 'lecturer' : 'student'}
+        emptyTitle={isAdmin ? 'No courses on the platform yet' : isLecturer ? 'No courses found' : 'Not enrolled in any courses'}
+        emptyDescription={
+          isAdmin
+            ? 'Lecturers have not created any courses yet.'
+            : isLecturer
+              ? "You have not created any courses yet. Click the button above to get started."
+              : "Click the 'Register Courses' button above to select classes for your level."
+        }
+      />
     </div>
   )
 }
